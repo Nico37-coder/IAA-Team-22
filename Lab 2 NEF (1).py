@@ -178,7 +178,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # In[4]:
 
 
-get_ipython().run_line_magic('pinfo2', 'SGDClassifier')
+#get_ipython().run_line_magic('pinfo2', 'SGDClassifier')
 
 
 # In[5]:
