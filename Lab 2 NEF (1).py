@@ -3,7 +3,17 @@
 
 # MEMO:
 #     
-#     1)  Evaluar sobre el conjunto de entrenamiento da error "ValueError: Classification metrics can't handle a mix of continuous-multioutput and binary targets"
+#     1)  Evaluar sobre el conjunto de entrenamiento da error "ValueError: Classification metrics can't handle a mix of continuous-multioutput and binary targets"(Las métricas de clasificación no pueden manejar una combinación de objetivos continuos de salida múltiple y binarios)
+#     
+#     2) Fijar la semilla aleatoria para repetir el experimento? random_state=0? puede ser otro N°?
+#     
+#     3) Matrices e confución para conjunto de entrenamiento error:Classification metrics can't handle a mix of continuous-multioutput and binary targets(Las métricas de clasificación no pueden manejar una combinación de objetivos continuos de salida múltiple y binarios)
+#     
+#     4)'min_samples_leaf':['int','float'] #se rompe "'<' not supported between instances of 'float' and 'str'"(ver punto práctico  3.2)
+#     
+#     5)Para la mejor configuración encontrada, evaluar sobre el conjunto de entrenamiento y sobre el conjunto de evaluación, reportando. CONSULTA: Hay que volver a entrenar y testear el mejor modelo con 0,2 de test???(todos los datos). En ejercicio 2.2 y 3.2.
+#     
+#     6) Ejericicio 2.2 se rompe alfa ['int','float'] #se rompe "'<' not supported between instances of 'float' and 'str
 
 # # Laboratorio 2: Armado de un esquema de aprendizaje automático
 # 
@@ -31,6 +41,11 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 from utils import plot_confusion_matrix
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import ParameterGrid
+from sklearn.tree import plot_tree
+from sklearn.model_selection import RandomizedSearchCV
 
 
 # ## Carga de datos y división en entrenamiento y evaluación
@@ -178,7 +193,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # In[4]:
 
 
-#get_ipython().run_line_magic('pinfo2', 'SGDClassifier')
+get_ipython().run_line_magic('pinfo2', 'SGDClassifier')
 
 
 # In[5]:
@@ -218,6 +233,12 @@ print(classification_report(y_test, y_test_pred))
 
 
 # #### Matrices de Confusión
+
+# In[ ]:
+
+
+
+
 
 # In[11]:
 
@@ -262,6 +283,196 @@ plot_confusion_matrix(cm, ['0','1'])
 # - https://scikit-learn.org/stable/modules/grid_search.html
 # - https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html
 
+# ##### Grilla de Parámetros + Validación Cruzada
+
+# In[15]:
+
+
+get_ipython().run_line_magic('pinfo2', 'SGDClassifier')
+
+
+# In[16]:
+
+
+from sklearn.utils.fixes import loguniform #Parametros de SGDClassifier
+from scipy import stats
+
+param_grid = {
+    'loss': [
+        'hinge',        # SVM
+        'log',          # logistic regression
+        'preceptron',  # perceptron (not supported)
+        'epsilon_insensitive'
+    ],
+    #'alpha': ['0.0001','0.00015','0.0002'],   #(tasa de regularización) ##Se rompe
+    'learning_rate': [
+        'optimal',
+        'invscaling',
+        'adaptive',
+    ],
+    'penalty': [
+        'l2',
+        'l1',
+        'elasticnet'
+        
+    ]
+    
+}
+
+
+# In[17]:
+
+
+for params in ParameterGrid(param_grid):
+    print(params)
+    model = SGDClassifier(**params, random_state=0)
+
+
+# ##### Búsqueda Aleatoria + Validación Cruzada
+#from sklearn.model_selection import RandomizedSearchCV
+
+model = SGDClassifier(random_state=0)
+
+cv = RandomizedSearchCV(model, param_dist, n_iter=50, cv=5, random_state=0)
+cv.fit(X_train, y_train);
+# In[18]:
+
+
+#from sklearn.model_selection import GridSearchCV
+
+model = SGDClassifier(random_state=0)
+
+cv = GridSearchCV(model, param_grid, scoring='accuracy', cv=5)
+cv.fit(X_train, y_train);
+
+
+# In[19]:
+
+
+results = cv.cv_results_
+params = results['params']
+mean = results['mean_test_score']
+std = results['std_test_score']
+rank = results['rank_test_score']
+
+#print("loss\tlearning_rate\tpenalty\t| mean\tstd\trank") #Acomodar impresión
+#for p, m, s, r in zip(params, mean, std, rank):
+  #  print(f"{p['loss']}\t{p['learning_rate']}\t{p['penalty']}\t| {m:0.2f}\t{s:0.2f}\t{r}")
+
+
+# In[20]:
+
+
+df = pd.DataFrame(results)
+df.head()
+
+
+# In[21]:
+
+
+df.shape
+
+
+# In[22]:
+
+
+df = pd.DataFrame(results)
+df=df[['param_loss', 'param_learning_rate', 'param_penalty', 'mean_test_score', 'std_test_score', 'rank_test_score']]
+
+
+# In[23]:
+
+
+df = df.sort_values('rank_test_score')
+df
+
+
+# In[24]:
+
+
+cv.best_estimator_
+
+
+# In[25]:
+
+
+cv.best_params_
+
+
+# **Para la mejor configuración encontrada, evaluar sobre el conjunto de entrenamiento y sobre el conjunto de evaluación, reportando:**
+# 
+# 
+# Accuracy
+# 
+# Precision
+# 
+# Recall
+# 
+# F1
+# 
+# matriz de confusión
+
+# In[26]:
+
+
+model = SGDClassifier(learning_rate= 'optimal', loss='hinge', penalty='l2',random_state=0)
+
+
+# In[27]:
+
+
+model.fit(X_train, y_train)
+
+
+# In[28]:
+
+
+y_train_pred = model.predict(X_train)
+
+
+# In[29]:
+
+
+y_test_pred = model.predict(X_test)
+
+
+# In[30]:
+
+
+#print(classification_report(X_train, y_train_pred)) #(?)
+
+
+# In[31]:
+
+
+print(classification_report(y_test, y_test_pred))
+
+
+# In[32]:
+
+
+#cm = confusion_matrix(X_train, y_train_pred) #???
+
+
+# In[33]:
+
+
+#plot_confusion_matrix(cm, ['0','1'])
+
+
+# In[34]:
+
+
+cm = confusion_matrix(y_test, y_test_pred)
+cm
+
+
+# In[35]:
+
+
+plot_confusion_matrix(cm, ['0','1'])
+
+
 # ## Ejercicio 3: Árboles de Decisión
 # 
 # En este ejercicio se entrenarán árboles de decisión para predecir la variable objetivo.
@@ -286,6 +497,69 @@ plot_confusion_matrix(cm, ['0','1'])
 # - matriz de confusión
 # 
 
+# In[36]:
+
+
+model = DecisionTreeClassifier(random_state=0)   
+
+
+# In[37]:
+
+
+model.fit(X_train, y_train)
+
+
+# In[38]:
+
+
+y_train_pred = model.predict(X_train)
+
+
+# In[39]:
+
+
+y_test_pred = model.predict(X_test)
+
+
+# In[40]:
+
+
+#print(classification_report(X_train, y_train_pred)) #(?)
+
+
+# In[41]:
+
+
+print(classification_report(y_test, y_test_pred))
+
+
+# #### Matrices de Confusión
+
+# In[42]:
+
+
+#cm = confusion_matrix(X_train, y_train_pred) #???
+
+
+# In[43]:
+
+
+#plot_confusion_matrix(cm, ['0','1'])
+
+
+# In[44]:
+
+
+cm = confusion_matrix(y_test, y_test_pred)
+cm
+
+
+# In[45]:
+
+
+plot_confusion_matrix(cm, ['0','1'])
+
+
 # ### Ejercicio 3.2: Ajuste de Hiperparámetros
 # 
 # Seleccionar valores para los hiperparámetros principales del DecisionTreeClassifier. Como mínimo, probar diferentes criterios de partición (criterion), profundidad máxima del árbol (max_depth), y cantidad mínima de samples por hoja (min_samples_leaf).
@@ -305,3 +579,187 @@ plot_confusion_matrix(cm, ['0','1'])
 # Documentación:
 # - https://scikit-learn.org/stable/modules/grid_search.html
 # - https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html
+
+# ##### Grilla de Parámetros + Validación Cruzada
+
+# In[46]:
+
+
+get_ipython().run_line_magic('pinfo2', 'DecisionTreeClassifier')
+
+
+# In[47]:
+
+
+param_grid = {
+    'criterion': ['gini', 'entropy'],
+    'splitter':['best','random'],
+    'max_depth': [1, 2, 3, 4, 5],
+#'min_samples_leaf':['int','float'] ###se rompe "'<' not supported between instances of 'float' and 'str'"
+}
+
+
+# Podemos listar todas las combinaciones para usarlas a mano con ParameterGrid:
+
+# In[48]:
+
+
+#from sklearn.model_selection import ParameterGrid
+
+for params in ParameterGrid(param_grid):
+    print(params)
+    model = DecisionTreeClassifier(**params, random_state=0)
+   
+
+
+# In[49]:
+
+
+#from sklearn.model_selection import GridSearchCV
+
+model = DecisionTreeClassifier(random_state=0)
+
+cv = GridSearchCV(model, param_grid, scoring='accuracy', cv=5)
+cv.fit(X_train, y_train);
+
+
+# In[50]:
+
+
+results = cv.cv_results_
+params = results['params']
+mean = results['mean_test_score']
+std = results['std_test_score']
+rank = results['rank_test_score']
+
+print("crit.\tdepth\tsplitter\t| mean\tstd\trank") #Acomodar impresión
+for p, m, s, r in zip(params, mean, std, rank):
+    print(f"{p['criterion']}\t{p['max_depth']}\t{p['splitter']}\t| {m:0.2f}\t{s:0.2f}\t{r}")
+
+
+# In[51]:
+
+
+df = pd.DataFrame(results)
+df.head()
+
+
+# In[52]:
+
+
+df.shape # 20 combinaciones de parametros
+
+
+# In[53]:
+
+
+df = pd.DataFrame(results)
+df=df[['param_criterion', 'param_max_depth', 'param_splitter', 'mean_test_score', 'std_test_score', 'rank_test_score']]
+
+
+# In[54]:
+
+
+df = df.sort_values('rank_test_score')
+df
+
+
+# In[55]:
+
+
+best_model = cv.best_estimator_
+
+
+# In[56]:
+
+
+cv.best_params_ #index 6 del df
+
+
+# In[57]:
+
+
+#from sklearn.tree import plot_tree
+
+plot_tree(best_model);
+
+
+# **Para la mejor configuración encontrada, evaluar sobre el conjunto de entrenamiento y sobre el conjunto de evaluación, reportando:**
+# 
+# 
+# Accuracy
+# 
+# Precision
+# 
+# Recall
+# 
+# F1
+# 
+# matriz de confusión
+
+# In[58]:
+
+
+model = DecisionTreeClassifier(criterion='gini', max_depth= 4, splitter='best',  random_state=0)  
+
+
+# In[59]:
+
+
+model.fit(X_train, y_train)
+
+
+# In[60]:
+
+
+y_train_pred = model.predict(X_train)
+
+
+# In[61]:
+
+
+y_test_pred = model.predict(X_test)
+
+
+# In[62]:
+
+
+#print(classification_report(X_train, y_train_pred)) #(?)
+
+
+# In[63]:
+
+
+print(classification_report(y_test, y_test_pred))
+
+
+# In[64]:
+
+
+#cm = confusion_matrix(X_train, y_train_pred) #???
+
+
+# In[65]:
+
+
+#plot_confusion_matrix(cm, ['0','1'])
+
+
+# In[66]:
+
+
+cm = confusion_matrix(y_test, y_test_pred)
+cm
+
+
+# In[67]:
+
+
+plot_confusion_matrix(cm, ['0','1'])
+
+
+# In[ ]:
+
+
+
+
